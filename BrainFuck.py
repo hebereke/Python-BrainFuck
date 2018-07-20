@@ -1,20 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+## Python3
+
 import sys
 
-## Python3
 class OpToken(dict):
+    """OpToken class to store transrate map
+    """
 	def __init__(self, optokendict={}):
 		dict.__init__(self, optokendict)
-	def tokens(self):
+	def tokens(self): ## output token list
 		return self.values()
-	def opcodes(self):
+	def opcodes(self): ## output opcode list
 		return self.keys()
-	def sorted_tokens(self): # sorted tokens by length
+	def sorted_tokens(self): ## sorted tokens by length
 		return sorted(self.tokens(), key=lambda x: len(x), reverse=True)
-	def swap(self): # return new OpToken object to swap token and opcode
+	def swap(self): ## return new OpToken object to swap token and opcode
 		return OpToken(dict(zip(self.tokens(), self.opcodes())))
-	def replace_tokens(self, tokens): # replace tokens with given list
+	def replace_tokens(self, tokens): ## replace tokens with given list
 		index=0
 		for k in iter(self):
 			self[k]=tokens[index]
@@ -22,6 +25,7 @@ class OpToken(dict):
 
 class BrainFuck:
 	"""BrainFuck class to generate BrainFuck Variants
+    http://www.muppetlabs.com/~breadbox/bf/
 	"""
 	BF_OPTOKEN_DICT = dict( # BrainFuck opcode and token
 		nxt = '>',
@@ -43,6 +47,8 @@ class BrainFuck:
 		"""parameter description:
 		optoken_dict = dict of op and token
 		asize  = cell array size
+        sep = separator of src code
+        token = token list to replace with original token, easy to create variant
 		"""
 		self.asize = asize
 		self.sep = sep
@@ -112,35 +118,55 @@ class BrainFuck:
 		return True
 
 	def initialize(self):
+        """initialize before running
+        """
 		self.ptr = 0 # pointer in executer()
 		self.cur = 0 # index of codes
 		self.cell = [0 for i in range(self.asize)] # cell
 
 	def prepro(self, opcodes):
+        """pre-processing
+        """
 		return opcodes
 
 	def postpro(self, opcodes):
+        """post-processing
+        """
 		return opcodes
 
 	def op_nxt(self, opcodes):
+        """increment pointer (++ptr)
+        """
 		self.ptr+=1
 
 	def op_prv(self, opcodes):
+        """decrement pointer (--ptr)
+        """
 		self.ptr-=1
 
 	def op_inc(self, opcodes):
-		self.cell[self.ptr]+=1
+        """increment the byte at pointer (++*ptr)
+        """		self.cell[self.ptr]+=1
 
 	def op_dec(self, opcodes):
+        """decrement the byte at pointer (--*ptr)
+        """		self.cell[self.ptr]+=1
 		self.cell[self.ptr]-=1
 
 	def op_put(self, opcodes):
+        """output the byte at the pointer (putchar(*ptr))
+        """
+		self.cell[self.ptr]+=1
 		sys.stdout.write(chr(self.cell[self.ptr]))
 
 	def op_get(self, opcodes):
+        """Input a byte and store it in the byte at the pointer (*ptr = getchar())
+        """
 		self.cell[self.ptr] = ord(raw_input("Enter>")[0])
 
 	def op_opn(self, opcodes):
+        """jump forward past the matching ] if the byte at the pointer is zero (which (*ptr) {)
+        """
 		if self.cell[self.ptr] != 0:
 			return False
 		level=1
@@ -150,6 +176,8 @@ class BrainFuck:
 			if opcodes[self.cur]=='cls': level-=1
 
 	def op_cls(self, opcodes):
+        """jump backward to the matching [ unless the byte at the pointer is zero (})
+        """
 		if self.cell[self.ptr] == 0:
 			return False
 		level=1
@@ -159,7 +187,7 @@ class BrainFuck:
 			if opcodes[self.cur]=='cls': level+=1
 
 	def run(self, src):
-		"""run
+		"""run src code
 		"""
 		self.initialize()
 		opcode = self.opcodes(src)
@@ -196,11 +224,17 @@ class BrainFuck:
 		return self.run(src)
 
 class Ook (BrainFuck):
+    """Ook! language
+    http://www.dangermouse.net/esoteric/ook.html
+    """
 	OOK_TOKEN=['Ook. Ook?','Ook? Ook.','Ook. Ook.','Ook! Ook!','Ook. Ook!','Ook! Ook.','Ook! Ook?','Ook? Ook!']
 	def __init__(self, tokens=OOK_TOKEN):
 		BrainFuck.__init__(self, tokens=tokens, sep=' ')
 
 class BrainCrash (BrainFuck):
+    """BrainCrash language
+    https://enpedia.rxy.jp/wiki/BrainCrash
+    """
 	BC_OPTOKEN_DICT={
 		'or':'|',
 		'and':'&',
@@ -212,28 +246,30 @@ class BrainCrash (BrainFuck):
 	def __init__(self, optoken_dict=OPTOKEN_DICT, asize=BrainFuck.ARRAY_SIZE, tokens=None, debug=False):
 		BrainFuck.__init__(self, optoken_dict=optoken_dict, asize=asize, tokens=tokens)
 	def prepro(self, opcodes):
-		self.cell[0:12]=[72,101,108,108,111,44,32,119,111,114,108,100,33] ## store "Hello, world!"
+		self.cell[0:12]=[72,101,108,108,111,44,32,119,111,114,108,100,33] # store "Hello, world!"
 		if len(opcodes)>0:
-			opcodes=['nxt']*13+opcodes
+			opcodes=['nxt']*13+opcodes # move pointer to run BF code
 		return opcodes
 	def postpro(self, opcodes):
-		while self.cell[self.ptr]!=0:
+		while self.cell[self.ptr]!=0: # after run opcodes, increment pointer to output the byte at pointer until byte==0
 			sys.stdout.write(chr(self.cell[self.ptr]))
 			self.ptr+=1
 		return opcodes
-	def op_or(self, opcodes):
+	def op_or(self, opcodes): ## or 
 		self.cell[self.ptr+1]=self.cell[self.ptr] | self.cell[self.ptr+1]
 		self.ptr+=1
-	def op_and(self, opcodes):
+	def op_and(self, opcodes): ## and
 		self.cell[self.ptr+1]=self.cell[self.ptr] & self.cell[self.ptr+1]
 		self.ptr+=1
-	def op_xor(self, opcodes):
+	def op_xor(self, opcodes): ## xor
 		self.cell[self.ptr+1]=self.cell[self.ptr] ^ self.cell[self.ptr+1]
 		self.ptr+=1
-	def op_not(self, opcodes):
+	def op_not(self, opcodes): ## not 
 		self.cell[self.ptr+1]= ~ self.cell[self.ptr]
 
 class CommDisCore(BrainCrash):
+    """extend class for CommDis language
+    """
 	CDC_OPTOKEN_DICT=dict(
 		shl = '*',
 		shr = '/',
@@ -247,20 +283,23 @@ class CommDisCore(BrainCrash):
 	ARRAY_SIZE = 32767
 	def __init__(self, optoken_dict=OPTOKEN_DICT, asize=ARRAY_SIZE, tokens=None, debug=False):
 		BrainCrash.__init__(self, optoken_dict=optoken_dict, asize=asize, tokens=tokens)
-	def op_shl(self, opcodes): # left shift
+	def op_shl(self, opcodes): ## bit shift left
 		self.cell[self.ptr]<<1
-	def op_shr(self, opcodes): # right shift
+	def op_shr(self, opcodes): ## bit shift right
 		self.cell[self.ptr]>>1
-	def op_njm(self, opcodes):
+	def op_njm(self, opcodes): ## increase pointer by the byte at pointer
 		self.ptr+=self.cell[self.ptr]
-	def op_pjm(self, opcodes):
+	def op_pjm(self, opcodes): ## decrease pointer by the byte at pointer
 		self.ptr-=self.cell[self.ptr]
-	def op_zro(self, opcodes):
+	def op_zro(self, opcodes): ## set zero the byte at pointer 
 		self.cell[self.ptr]=0
-	def op_hom(self, opcodes):
+	def op_hom(self, opcodes): ## move pointer to 0
 		self.ptr=0
 
 class CommDis(CommDisCore):
+    """コミュ障プログラミング言語
+    http://www.moonroom.mydns.jp/ls/software/commdis.htm
+    """
 	CD_TOKEN=['ｱｱ…','ｱｱ､','ｱ…','ｱ､','ｴｯﾄ…','ｴｯﾄ､','ｻｾﾝ…','ｯｽ…','ｱｯ…','ｱｯ､','ｱﾉ…','ｱﾉ､','ｱｰ…','ｱｰ､','ｴ…','ｴ､','ｴｯ…','ｴｯ?']
 	def __init__(self, tokens=CD_TOKEN):
 		CommDisCore.__init__(self, tokens=tokens)
