@@ -666,21 +666,17 @@ class KQ(BrainFuck.BrainFuck):
         cls = ['ｲｪｽｼｴﾘ', ',']
     )
     HELLO_WORLD_SRC = ''
-    SEQUENCE_LENGTH = 3
     def preproc(self, opcodes):
         self.put_buffer=[]
         return opcodes
     def op_put(self, opcodes): ## output the byte at the pointer (putchar(*ptr)).
+        import locale
         try:
-            sys.stdout.write(chr(self.cell[self.ptr]))
-        except UnicodeEncodeError:
-            self.put_buffer.append(self.cell[self.ptr])
-        if len(self.put_buffer)==self.SEQUENCE_LENGTH:
-            s = b''
-            for i in self.put_buffer:
-                s = s + i.to_bytes(1, 'big')
-            sys.stdout.write(s.decode('utf-8'))
+            self.put_buffer.append(self.cell[self.ptr].to_bytes(1, 'big'))
+            sys.stdout.write(b''.join(self.put_buffer).decode(sys.getdefaultencoding()))
             self.put_buffer = []
+        except UnicodeDecodeError:
+            pass
         return True
 
 def test_kq():
