@@ -57,7 +57,7 @@ class BrainFuck:
     ARRAY_SIZE = 30000 # default cell array size
     SEP = '' # default separator
     TOKENS = None # default token list to be used replacement
-    HELLO_WORLD_SRC = '>+++++++++[<++++++++>-]<.>+++++++[<++++>-]<+.+++++++..+++.[-]>++++++++[<++++>-]<.>+++++++++++[<+++++>-]<.>++++++++[<+++>-]<.+++.------.--------.[-]>++++++++[<++++>-]<+.[-]++++++++++.'
+    BF_HELLO_WORLD_SRC = '>+++++++++[<++++++++>-]<.>+++++++[<++++>-]<+.+++++++..+++.[-]>++++++++[<++++>-]<.>+++++++++++[<+++++>-]<.>++++++++[<+++>-]<.+++.------.--------.[-]>++++++++[<++++>-]<+.[-]++++++++++.'
 
     def __init__(self, optoken_dict=None, asize=None, sep=None, tokens=None, debug=False):
         """parameter description:
@@ -89,19 +89,19 @@ class BrainFuck:
     def lexer(self, src, tokenlist):
         """lexical analysis of src code and return tokens list
         """
-        tokenlist = sorted(tokenlist, key=lambda x: len(x), reverse=True)
         tokens = []
         cur = 0 ## current position in src
         ctoken = None
         while cur <= len(src)-1:
             str = src[cur:]
-            cindex = len(str)
+            start = len(str)
             for token in tokenlist:
-                if str.find(token)>=0 and str.find(token)<cindex:
+                index = str.find(token)
+                if index>=0 and (index<start or (index==start and start+len(ctoken)<index+len(token))):
                     ctoken = token
-                    cindex = str.find(token)
+                    start = index
             if self.debug:
-                print('LEXER:', len(tokens), cur, ctoken, str[cindex:len(tokenlist[0])+20])
+                print('LEXER:', len(tokens), cur, ctoken, str[start:32])
             if ctoken!=None:
                 tokens.append(ctoken)
                 cur+=str.find(ctoken)+len(ctoken)
@@ -240,20 +240,6 @@ class BrainFuck:
         """
         return self.sep.join(tokens)
 
-    def hello_world(self, mode='run'):
-        """print "Hello World!" code and the result
-        """
-        src = (self.HELLO_WORLD_SRC)
-        if mode=='run': 
-            return self.run(src)
-        elif mode == 'opcode':
-            return self.opcodes(src)
-        elif mode == 'token':
-            return self.tokens(src)
-        else:
-            raise TypeError('given mode is not valid')
-        return True
-
     def test(self, src):
         """output token list, opcode list and reuslt
         """
@@ -269,12 +255,11 @@ if __name__ == '__main__':
     ## test 
     b=BrainFuck()
     b.printparams()
-    b.test(b.HELLO_WORLD_SRC)
-    b.hello_world(mode='token')
+    b.test(b.BF_HELLO_WORLD_SRC)
     print('')
+
     ## simple instance creation sample 
     ## Kapibara-san language instance
     print('Kapibara-san variant:')
     k=BrainFuck(tokens=['のすのす','もでーん','キュルッ！','もふっ！', 'むぎゅっと','グッ！！','ぬっくし','うっとり'], sep=' ')
-    b.opcodes(b.HELLO_WORLD_SRC)
-    k.test(k.tokens2src(k.opcodes2tokens(b.opcodes(b.HELLO_WORLD_SRC))))
+    k.test(k.tokens2src(k.opcodes2tokens(b.opcodes(b.BF_HELLO_WORLD_SRC))))
