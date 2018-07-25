@@ -1,362 +1,280 @@
-﻿#!/usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 ## Python3
 
 import sys
 
 class OpToken(dict):
-	"""OpToken class to store transrate map
-	"""
-	def __init__(self, optokendict={}):
-		dict.__init__(self, optokendict)
-	def tokens(self): ## output token list
-		return list(self.values())
-	def opcodes(self): ## output opcode list
-		return list(self.keys())
-	def sorted_tokens(self): ## sorted tokens by length
-		return sorted(self.tokens(), key=lambda x: len(x), reverse=True)
-	def swap(self): ## return new OpToken object to swap token and opcode
-		return OpToken(dict(zip(self.tokens(), self.opcodes())))
-	def replace_tokens(self, tokens): ## replace tokens with given list
-		index=0
-		for k in iter(self):
-			self[k]=tokens[index]
-			index+=1
+    """OpToken class to store token/opcode transration map
+    """
+    def __init__(self, optokendict={}):
+        if type(optokendict)!= dict:
+            raise TypeError('argument is not dict')
+        for k in optokendict:
+            v = optokendict[k]
+            optokendict[k] = [v] if type(v)!=list else v
+        super().__init__(optokendict)
+    def __setitem__(self, key, val):
+        dict.__setitem__(self, key, val if type(val)==list else [val])
+    def alltokens(self): ## output all token list
+        return sum(self.values(), [])
+    def tokens(self): ## output 1st token of all opcodes
+        return [self[s][0] for s in self.opcodes()]
+    def opcodes(self): ## output opcode list
+        return list(self.keys())
+    def opcode(self, token): ## output opcode by given token
+        for o in self.opcodes():
+            if token in self[o]:
+                return o
+        return None
+    def token(self, opcode, index=0): ## output token of given opcode 
+        return self[opcode][index]
+    def token2opcode_dict(self): ## return dict as {t:o}
+        return dict([(t, self.opcode(t)) for t in self.alltokens()])
+    def opcode2token_dict(self): ## return dict as {opcode:token} (1st token only)
+        return dict(zip(self.opcodes(), self.tokens()))
+    def replace_tokens(self, tokens): ## replace tokens with given list
+        if type(tokens)!=list:
+            raise TypeError('arg tokens is not list')
+        if len(self)!=len(tokens):
+            raise IndexError('index of given tokens is not matched')
+        return self.__init__(dict(zip(self.opcodes(), tokens)))
 
 class BrainFuck:
-	"""BrainFuck class to generate BrainFuck Variants
-	http://www.muppetlabs.com/~breadbox/bf/
-	"""
-	BF_OPTOKEN_DICT = dict( # BrainFuck opcode and token
-		nxt = '>',
-		prv = '<',
-		inc = '+',
-		dec = '-',
-		put = '.',
-		get = ',',
-		opn = '[',
-		cls = ']'
-	)
-	BF_OPTOKEN = OpToken(BF_OPTOKEN_DICT)
-	OPTOKEN_DICT = dict(BF_OPTOKEN_DICT.items())
-	HELLO_WORLD_SRC = '>+++++++++[<++++++++>-]<.>+++++++[<++++>-]<+.+++++++..+++.[-]>++++++++[<++++>-]<.>+++++++++++[<+++++>-]<.>++++++++[<+++>-]<.+++.------.--------.[-]>++++++++[<++++>-]<+.[-]++++++++++.'
-	ARRAY_SIZE = 30000 # default cell array size
-	SEP = '' # default separator
+    """BrainFuck class to generate BrainFuck Variants
+    http://www.muppetlabs.com/~breadbox/bf/
+    """
+    OPTOKEN_DICT = dict( # BrainFuck opcode and token
+        nxt = '>',
+        prv = '<',
+        inc = '+',
+        dec = '-',
+        put = '.',
+        get = ',',
+        opn = '[',
+        cls = ']'
+    )
+    ARRAY_SIZE = 30000 # default cell array size
+    SEP = '' # default separator
+    TOKENS = None # default token list to be used replacement
+    HELLO_WORLD_SRC = '>+++++++++[<++++++++>-]<.>+++++++[<++++>-]<+.+++++++..+++.[-]>++++++++[<++++>-]<.>+++++++++++[<+++++>-]<.>++++++++[<+++>-]<.+++.------.--------.[-]>++++++++[<++++>-]<+.[-]++++++++++.'
 
-	def __init__(self, optoken_dict=OPTOKEN_DICT, asize=ARRAY_SIZE, sep=SEP, tokens=None, debug=False):
-		"""parameter description:
-		optoken_dict = dict of op and token
-		asize  = cell array size
-		sep = separator of src code
-		token = token list to replace with original token, easy to create variant
-		"""
-		self.asize = asize
-		self.sep = sep
-		self.optoken = OpToken(optoken_dict)
-		if tokens!=None:
-			if type(tokens) == list and len(tokens) == len(self.optoken):
-				self.optoken.replace_tokens(tokens)
-			else:
-				raise TypeError('arg tokens is not proper list')
-		if debug: self.printparams()
-		self.initialize()
+    def __init__(self, optoken_dict=None, asize=None, sep=None, tokens=None, debug=False):
+        """parameter description:
+        """
+        self.asize = asize if asize!=None else self.ARRAY_SIZE # cell array size
+        self.sep = sep if sep!=None else self.SEP # separator to output src code
+        self.optoken = OpToken(optoken_dict) if optoken_dict!=None else OpToken(self.OPTOKEN_DICT) # OpToken of opcode and token transmap dict
+        if self.TOKENS!=None:
+            self.optoken.replace_tokens(self.TOKENS)
+        if tokens!=None:
+            self.optoken.replace_tokens(tokens)
+        self.debug = debug
+        if self.debug:
+            self.printparams()
+        self.initializer()
 
-	def printparams(self):
-		"""print spec for debugging
-		"""
-		header = '***** Spec of "'+self.__class__.__name__+'" *****'
-		print(header)
-		print('Array size = '+str(self.asize))
-		print('Token/Opcode map = ')
-		tokenop = self.optoken.swap()
-		for t in tokenop:
-			print('  '+t+' => '+tokenop[t])
-		print('*' * (len(header)))
+    def printparams(self):
+        """print spec for debugging
+        """
+        header = '***** Spec of "'+self.__class__.__name__+'" *****'
+        print(header)
+        print('Array size = '+str(self.asize))
+        print('Token/Opcode map:')
+        for t in self.optoken.alltokens():
+            print('  '+t+' => '+self.optoken.opcode(t))
+        print('*' * (len(header)))
+        return True
 
-	def lexer(self, src, tokenlist, sep=''):
-		"""lexical analysis of src code and return tokens list
-		"""
-		import re
-		tokens=[]
-		cur=0
-		clen=1
-		tokenlist.sort(key=lambda x: len(x), reverse=True)
-		maxtlen=len(tokenlist[0])
-		while cur <= len(src)-1:
-			end=cur+clen
-			s=src[cur:end]
-			if end > len(src):
-				break
-			elif clen > maxtlen:
-				cur+=1
-				clen=1
-				continue
-			elif s in tokenlist:
-				tokens.append(s)
-				cur+=len(s)
-				clen=1
-			elif s==sep:
-				cur+=1
-			elif re.match('\s', s):
-				cur+=1
-			else:
-				clen+=1
-		return tokens
+    def lexer(self, src, tokenlist):
+        """lexical analysis of src code and return tokens list
+        """
+        tokenlist = sorted(tokenlist, key=lambda x: len(x), reverse=True)
+        tokens = []
+        cur = 0 ## current position in src
+        ctoken = None
+        while cur <= len(src)-1:
+            str = src[cur:]
+            cindex = len(str)
+            for token in tokenlist:
+                if str.find(token)>=0 and str.find(token)<cindex:
+                    ctoken = token
+                    cindex = str.find(token)
+            if self.debug:
+                print('LEXER:', len(tokens), cur, ctoken, str[cindex:len(tokenlist[0])+20])
+            if ctoken!=None:
+                tokens.append(ctoken)
+                cur+=str.find(ctoken)+len(ctoken)
+                ctoken = None
+            else:
+                break
+        return tokens
 
-	def translator(self, tokens, transmap):
-		"""translate tokens by transmap
-		"""
-		return [transmap[t] for t in tokens]
+    def translator(self, tokens, trans_dict):
+        """translate tokens by transmap
+        """
+        if self.debug:
+            for t in tokens:
+                print('TRANSLATOR:', t, '=>', trans_dict[t])
+        return [trans_dict[t] for t in tokens]
 
-	def executer(self, opcodes):
-		"""execute opcodes
-		"""
-		opcodes = self.prepro(opcodes)
-		while self.cur < len(opcodes):
-			c = opcodes[self.cur]
-			try:
-				eval('self.op_'+c+'(opcodes)')
-			except NameError:
-				print('function for '+c+' ('+self.optoken[c]+') is not defined yet')
-				sys.exit() 
-			self.cur+=1
-		opcodes = self.postpro(opcodes)
-		return True
+    def executer(self, opcodes):
+        """execute opcodes
+        """
+        opcodes = self.preproc(opcodes)
+        while self.cur < len(opcodes):
+            c = opcodes[self.cur]
+            if self.debug:
+                print('EXECUTER:', c, self.cur, self.ptr, self.cell[self.ptr])
+            try:
+                eval('self.op_'+c+'(opcodes)')
+            except NameError:
+                print('function for '+c+' ('+self.optoken[c]+') is not defined yet')
+                sys.exit() 
+            self.cur+=1
+            opcodes = self.stepproc(opcodes)
+        opcodes = self.postproc(opcodes)
+        return True
 
-	def initialize(self):
-		"""initialize before running
-		"""
-		self.ptr = 0 # pointer in executer()
-		self.cur = 0 # index of codes
-		self.cell = [0 for i in range(self.asize)] # cell
+    def initializer(self):
+        """initialize before running
+        """
+        self.ptr = 0 # pointer in executer()
+        self.cur = 0 # index of codes
+        self.cell = [0 for i in range(self.asize)] # cell
+        return True
 
-	def prepro(self, opcodes): ## pre-processing
-		return opcodes
+    def preproc(self, opcodes): ## pre-processing
+        return opcodes
 
-	def postpro(self, opcodes): ## post-processing
-		return opcodes
+    def stepproc(self, opcodes): ## process at each step
+        return opcodes
 
-	def op_nxt(self, opcodes): ## increment pointer (++ptr)
-		self.ptr+=1
+    def postproc(self, opcodes): ## post-processing
+        return opcodes
 
-	def op_prv(self, opcodes): ## decrement pointer (--ptr)
-		self.ptr-=1
+    def op_nxt(self, opcodes): ## increment pointer (++ptr)
+        self.ptr+=1
+        return True
 
-	def op_inc(self, opcodes): ## increment the byte at pointer (++*ptr)
-		self.cell[self.ptr]+=1
+    def op_prv(self, opcodes): ## decrement pointer (--ptr)
+        self.ptr-=1
+        return True
 
-	def op_dec(self, opcodes): ## decrement the byte at pointer (--*ptr)
-		self.cell[self.ptr]-=1
+    def op_inc(self, opcodes): ## increment the byte at pointer (++*ptr)
+        self.cell[self.ptr]+=1
+        return True
 
-	def op_put(self, opcodes): ## output the byte at the pointer (putchar(*ptr))
-		sys.stdout.write(chr(self.cell[self.ptr]))
+    def op_dec(self, opcodes): ## decrement the byte at pointer (--*ptr)
+        self.cell[self.ptr]-=1
+        return True
 
-	def op_get(self, opcodes): ## input a byte and store it in the byte at the pointer (*ptr = getchar())
-		self.cell[self.ptr] = ord(raw_input("Enter>")[0])
+    def op_put(self, opcodes): ## output the byte at the pointer (putchar(*ptr))
+        try:
+            sys.stdout.write(chr(self.cell[self.ptr]))
+        except UnicodeEncodeError:
+            sys.stdout.write(str(self.cell[self.ptr].to_bytes(1,'big'))+' ')
+        return True
 
-	def op_opn(self, opcodes): ## jump forward past the matching ] if the byte at the pointer is zero (which (*ptr) {)
-		if self.cell[self.ptr] != 0:
-			return False
-		level=1
-		while opcodes[self.cur]!='cls' or level!=0:
-			if self.cur <= len(opcodes): self.cur+=1
-			if opcodes[self.cur]=='opn': level+=1
-			if opcodes[self.cur]=='cls': level-=1
+    def op_get(self, opcodes): ## input a byte and store it in the byte at the pointer (*ptr = getchar())
+        self.cell[self.ptr] = ord(input("Enter>")[0])
+        return True
 
-	def op_cls(self, opcodes): ## jump backward to the matching [ unless the byte at the pointer is zero (})
-		if self.cell[self.ptr] == 0:
-			return False
-		level=1
-		while opcodes[self.cur]!='opn' or level!=0:
-			if self.cur >= 0: self.cur-=1
-			if opcodes[self.cur]=='opn': level-=1
-			if opcodes[self.cur]=='cls': level+=1
+    def op_opn(self, opcodes): ## jump forward past the matching ] if the byte at the pointer is zero (which (*ptr) {)
+        if self.cell[self.ptr] != 0:
+            return False
+        level=1
+        while opcodes[self.cur]!='cls' or level!=0:
+            if self.cur <= len(opcodes): self.cur+=1
+            if opcodes[self.cur]=='opn': level+=1
+            if opcodes[self.cur]=='cls': level-=1
+        return True
 
-	def run(self, src):
-		"""run src code
-		"""
-		self.initialize()
-		opcode = self.opcodes(src)
-		return self.executer(opcode)
+    def op_cls(self, opcodes): ## jump backward to the matching [ unless the byte at the pointer is zero (})
+        if self.cell[self.ptr] == 0:
+            return False
+        level=1
+        while opcodes[self.cur]!='opn' or level!=0:
+            if self.cur >= 0: self.cur-=1
+            if opcodes[self.cur]=='opn': level-=1
+            if opcodes[self.cur]=='cls': level+=1
+        return True
 
-	def opcodes(self, src):
-		"""output opcodes list
-		"""
-		tokens = self.lexer(src, self.optoken.sorted_tokens(), sep=self.sep)
-		return self.translator(tokens, self.optoken.swap())
+    def run(self, src):
+        """run src code
+        """
+        self.initializer()
+        opcode = self.opcodes(src)
+        return self.executer(opcode)
 
-	def opcode2tokens(self, opcodes):
-		"""transrate opcodes to tokens
-		"""
-		return self.translator(opcodes, self.optoken)
+    def opcodes(self, src):
+        """output opcodes list
+        """
+        return self.tokens2opcodes(self.src2tokens(src))
 
-	def opcode2src(self, opcodes):
-		"""output src from opcodes list
-		"""
-		return self.sep.join(self.opcode2tokens(opcodes))
+    def tokens(self, src):
+        """output tokens list
+        """
+        return self.src2tokens(src)
 
-	def converter(self, src):
-		"""convert original BrainFuck code to variant code
-		"""
-		lex=self.lexer(src, self.BF_OPTOKEN.tokens())
-		return self.sep.join(self.translator(lex, dict(zip(self.BF_OPTOKEN.tokens(), self.optoken.tokens()))))
+    def src(self, opcodes):
+        """output src
+        """
+        return self.opcodes2src(self.opcode2tokens(self, opcodes))
 
-	def bfcode(self, src):
-		"""output BrainFuck code
-		"""
-		op=self.opcodes(src)
-		return ''.join(self.translator(op, self.BF_OPTOKEN))
+    def src2tokens(self, src):
+        """output token list
+        """
+        return self.lexer(src, self.optoken.alltokens())
 
-	def hello_world(self):
-		"""print "Hello World!" code and the result
-		"""
-		src=self.converter(self.HELLO_WORLD_SRC)
-		print ("src =", src)
-		print ("opcode =", self.opcodes(src))
-		return self.run(src)
+    def tokens2opcodes(self, tokens):
+        return self.translator(tokens, self.optoken.token2opcode_dict())
 
-class Ook (BrainFuck):
-	"""Ook! language
-	http://www.dangermouse.net/esoteric/ook.html
-	"""
-	OOK_TOKEN=['Ook. Ook?','Ook? Ook.','Ook. Ook.','Ook! Ook!','Ook. Ook!','Ook! Ook.','Ook! Ook?','Ook? Ook!']
-	def __init__(self, tokens=OOK_TOKEN):
-		BrainFuck.__init__(self, tokens=tokens, sep=' ')
+    def opcodes2tokens(self, opcodes):
+        """transrate opcodes to tokens (1st token only)
+        """
+        return self.translator(opcodes, self.optoken.opcode2token_dict())
 
-class BrainCrash (BrainFuck):
-	"""BrainCrash language
-	https://enpedia.rxy.jp/wiki/BrainCrash
-	"""
-	BC_OPTOKEN_DICT={
-		'or':'|',
-		'and':'&',
-		'not':'~',
-		'xor':'^'
-	}
-	OPTOKEN_DICT = dict(BrainFuck.OPTOKEN_DICT.items())
-	OPTOKEN_DICT.update(BC_OPTOKEN_DICT)
-	def __init__(self, optoken_dict=OPTOKEN_DICT, asize=BrainFuck.ARRAY_SIZE, tokens=None, debug=False):
-		BrainFuck.__init__(self, optoken_dict=optoken_dict, asize=asize, tokens=tokens)
-	def prepro(self, opcodes):
-		self.cell[0:12]=[72,101,108,108,111,44,32,119,111,114,108,100,33] # store "Hello, world!"
-		if len(opcodes)>0:
-			opcodes=['nxt']*13+opcodes # move pointer to run BF code
-		return opcodes
-	def postpro(self, opcodes):
-		while self.cell[self.ptr]!=0: # after run opcodes, increment pointer to output the byte at pointer until byte==0
-			sys.stdout.write(chr(self.cell[self.ptr]))
-			self.ptr+=1
-		return opcodes
-	def op_or(self, opcodes): ## or 
-		self.cell[self.ptr+1]=self.cell[self.ptr] | self.cell[self.ptr+1]
-		self.ptr+=1
-	def op_and(self, opcodes): ## and
-		self.cell[self.ptr+1]=self.cell[self.ptr] & self.cell[self.ptr+1]
-		self.ptr+=1
-	def op_xor(self, opcodes): ## xor
-		self.cell[self.ptr+1]=self.cell[self.ptr] ^ self.cell[self.ptr+1]
-		self.ptr+=1
-	def op_not(self, opcodes): ## not 
-		self.cell[self.ptr+1]= ~ self.cell[self.ptr]
+    def tokens2src(self, tokens):
+        """output src from opcodes list
+        """
+        return self.sep.join(tokens)
 
-class CommDisCore(BrainCrash):
-	"""extend class for CommDis language
-	"""
-	CDC_OPTOKEN_DICT=dict(
-		shl = '*',
-		shr = '/',
-		njm = '{',
-		pjm = '}',
-		zro = '!',
-		hom = '?'
-	)
-	OPTOKEN_DICT = dict(BrainCrash.OPTOKEN_DICT.items())
-	OPTOKEN_DICT.update(CDC_OPTOKEN_DICT)
-	ARRAY_SIZE = 32767
-	def __init__(self, optoken_dict=OPTOKEN_DICT, asize=ARRAY_SIZE, tokens=None, debug=False):
-		BrainCrash.__init__(self, optoken_dict=optoken_dict, asize=asize, tokens=tokens)
-	def op_shl(self, opcodes): ## bit shift left
-		self.cell[self.ptr]<<1
-	def op_shr(self, opcodes): ## bit shift right
-		self.cell[self.ptr]>>1
-	def op_njm(self, opcodes): ## increase pointer by the byte at pointer
-		self.ptr+=self.cell[self.ptr]
-	def op_pjm(self, opcodes): ## decrease pointer by the byte at pointer
-		self.ptr-=self.cell[self.ptr]
-	def op_zro(self, opcodes): ## set zero the byte at pointer 
-		self.cell[self.ptr]=0
-	def op_hom(self, opcodes): ## move pointer to 0
-		self.ptr=0
+    def hello_world(self, mode='run'):
+        """print "Hello World!" code and the result
+        """
+        src = (self.HELLO_WORLD_SRC)
+        if mode=='run': 
+            return self.run(src)
+        elif mode == 'opcode':
+            return self.opcodes(src)
+        elif mode == 'token':
+            return self.tokens(src)
+        else:
+            raise TypeError('given mode is not valid')
+        return True
 
-class CommDis(CommDisCore):
-	"""コミュ障プログラミング言語
-	http://www.moonroom.mydns.jp/ls/software/commdis.htm
-	"""
-	CD_TOKEN=['ｱｱ…','ｱｱ､','ｱ…','ｱ､','ｴｯﾄ…','ｴｯﾄ､','ｻｾﾝ…','ｯｽ…','ｱｯ…','ｱｯ､','ｱﾉ…','ｱﾉ､','ｱｰ…','ｱｰ､','ｴ…','ｴ､','ｴｯ…','ｴｯ?']
-	def __init__(self, tokens=CD_TOKEN):
-		CommDisCore.__init__(self, tokens=tokens)
+    def test(self, src):
+        """output token list, opcode list and reuslt
+        """
+        print('Test '+self.__class__.__name__+' class:')
+        print('  * src: ', str(src))
+        print('  * token: ', self.tokens(src))
+        print('  * opcode: ', self.opcodes(src))
+        print('  * output: ')
+        self.run(src)
+        return True
 
-def test_bf():
-	print('BrainFuck class:')
-	b=BrainFuck()
-	b.hello_world()
-	print(b.opcodes('>>sample<<'))
-	b.printparams()
-	print('')
-
-def test_bc():
-	print('BrainCrash class:')
-	c=BrainCrash()
-	c.run('')
-	print('')
-	c.run('>+++++++++[<++++++++>-]<.>+++++++[<++++>-]<+.+++++++..+++.[-]>++++++++[<++++>-]<.>+++++++++++[<+++++>-]<.>++++++++[<+++>-]<.+++.------.--------.[-]>++++++++[<++++>-]<+.[-]++++++++++.')
-	c.run('[-]&&&&&&&&&&&&&+++++++[>++++++++++<-]>-.<+++++++[>++++++<-]>-.++.-----------.-.+++++.--------') # output 'Enpedia'
-	print('')
-	print('')
-
-def test_cd():
-	print('CommDis class:')
-	cd=CommDis()
-	cd.hello_world()
-	print(cd.opcode2tokens(['nxt','prv','hom','pjm','cls']))
-	print('')
-	fizzbuzzsrc="""ｱ…ｱ…ｱ…ｱ…ｱ…ｱ…ｻｾﾝ…ｱ､ｱｱ…ｱ…ｱ…ｱ…ｱ…ｱｱ…ｱｱ…ｱ…ｱｱ…ｱ…
-ｱｱ…ｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｯｽ…ｱｱ…ｻｾﾝ…ｱｱ､ｱ…ｱ…ｱ…ｱ…ｱｱ…ｱｱ…ｱ…
-ｱ…ｱ…ｱｱ…ｱ…ｱ…ｱ…ｱ…ｱｱ…ｱｱ…ｱ…ｱ…ｱ…ｱｱ…ｱ…ｱ…ｱ…ｱ…ｱ…
-ｱｱ…ｱ…ｱ…ｱ…ｱ…ｱ…ｱｱ…ｱｱ…ｱｱ…ｱｱ…ｱｱ…ｱｱ…ｱ…ｱ…ｱｱ…ｱｱ…ｱ…
-ｱ…ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱ､ｯｽ…ｱｱ､ｱ…ｱ…
-ｱ…ｱ…ｱｱ…ｱ…ｱ…ｱ…ｱｱ…ｱ､ｱ､ｱｱ…ｱ…ｱ…ｱ…ｱｱ…ｱ､ｱｱ…ｱｱ…ｱ､ｱ､ｱ､
-ｱｱ…ｱ…ｱ…ｱｱ…ｱｱ…ｱｱ…ｱ…ｱ…ｱ…ｱ…ｱ…ｻｾﾝ…ｱ､ｱｱ…ｱ…ｱ…ｱｱ…ｱ…
-ｱ…ｱｱ､ｱｱ､ｯｽ…ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｻｾﾝ…ｱ､ｱｱ…ｱ､ｻｾﾝ…
-ｱｱ…ｱｱ…ｱｱ…ｱｱ…ｱｱ…ｱｱ…ｱｱ…ｯｽ…ｱｱ…ｻｾﾝ…ｱｱ､ｱ…ｱ…ｱ…ｱｱ…ｴｯﾄ…
-ｱｱ…ｴｯﾄ…ｱｱ…ｱｱ…ｱｱ…ｱｱ…ｴｯﾄ…ｴｯﾄ…ｱｱ…ｱｱ…ｱｱ…ｱ…ｱｱ､ｯｽ…ｱｱ､
-ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱ､ｻｾﾝ…ｱｱ…ｱｱ…ｱｱ…ｱｱ…ｯｽ…ｱｱ…ｻｾﾝ…ｱｱ､ｱ…ｱ…ｱ…
-ｱ…ｱ…ｱｱ…ｴｯﾄ…ｱｱ…ｴｯﾄ…ｱｱ…ｴｯﾄ…ｴｯﾄ…ｱｱ…ｱｱ…ｱｱ…ｱ…ｱｱ､ｯｽ…
-ｱｱ…ｱｱ…ｱｱ…ｱｱ…ｱ…ｱｱ､ｱ､ｻｾﾝ…ｱｱ､ｱｱ､ｱｱ､ｯｽ…ｱｱ､ｻｾﾝ…ｻｾﾝ…ｱ､ｱｱ､
-ｱｱ､ｱ…ｱｱ…ｱｱ…ｯｽ…ｱｱ…ｱｱ…ｱｱ…ｱ…ｱｱ…ｱ…ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｻｾﾝ…
-ｱ､ｱｱ…ｱｱ…ｱ…ｱｱ…ｱ…ｱｱ…ｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｯｽ…ｱｱ､ｯｽ…ｱｱ…ｱｱ…ｻｾﾝ…
-ｻｾﾝ…ｱ､ｯｽ…ｱｱ､ｯｽ…ｱｱ…ｻｾﾝ…ｱｱ…ｱｱ…ｱｱ…ｻｾﾝ…ｱｱ…ｴｯﾄ…ｱｱ､ｱｱ､ｴｯﾄ…
-ｱｱ､ｱｱ､ｱｱ､ｯｽ…ｱｱ､ｻｾﾝ…ｴｯﾄ…ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｯｽ…ｱｱ…ｯｽ…ｱｱ…ｴｯﾄ…
-ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｯｽ…"""
-#	cd.run(fizzbuzzsrc)
-	print(cd.bfcode(fizzbuzzsrc))
-	print('')
-
-def test_ook():
-	print('Ook class:')
-	o=Ook()
-	o.hello_world()
-	print('')
-
-if __name__ == "__main__":
-	# test
-	test_bf()
-	test_bc()
-	test_ook()
-	test_cd()
-	# sample variant of BrainFuck
-	# kapibara language
-	print('kapibara variant:')
-	k=BrainFuck(tokens=['のすのす','もでーん','キュルッ！','もふっ！', 'むぎゅっと','グッ！！','ぬっくし','うっとり'], sep=' ')
-	k.hello_world()
-	# JoJo language
+if __name__ == '__main__':
+    ## test 
+    b=BrainFuck()
+    b.printparams()
+    b.test(b.HELLO_WORLD_SRC)
+    b.hello_world(mode='token')
+    print('')
+    ## simple instance creation sample 
+    ## Kapibara-san language instance
+    print('Kapibara-san variant:')
+    k=BrainFuck(tokens=['のすのす','もでーん','キュルッ！','もふっ！', 'むぎゅっと','グッ！！','ぬっくし','うっとり'], sep=' ')
+    b.opcodes(b.HELLO_WORLD_SRC)
+    k.test(k.tokens2src(k.opcodes2tokens(b.opcodes(b.HELLO_WORLD_SRC))))
