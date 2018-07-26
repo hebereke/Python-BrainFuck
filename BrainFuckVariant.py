@@ -6,8 +6,12 @@ import sys
 import BrainFuck
 
 ## Ook language
-## http://www.dangermouse.net/esoteric/ook.html
 class Ook (BrainFuck.BrainFuck):
+    """Ook language class
+    http://www.dangermouse.net/esoteric/ook.html
+
+    Replace token designed for orang-utans.
+    """
     TOKENS = ['Ook. Ook?','Ook? Ook.','Ook. Ook.','Ook! Ook!','Ook. Ook!','Ook! Ook.','Ook! Ook?','Ook? Ook!']
     SEP = ' '
 
@@ -17,15 +21,21 @@ def test_ook():
     print('** Convert Hello World BraiFuck code to Ook code:')
     b = BrainFuck.BrainFuck()
     bf_opcodes = b.opcodes(b.BF_HELLO_WORLD_SRC)
-    ook_src = o.tokens2src(o.opcodes2tokens(bf_opcodes))
+    ook_src = o.src(bf_opcodes)
     print(ook_src)
     print('** Hello World test:')
     o.test(ook_src)
     print('')
 
 ## BrainCrash language
-## https://enpedia.rxy.jp/wiki/BrainCrash
 class BrainCrash (BrainFuck.BrainFuck):
+    """BrainCrash language
+    https://enpedia.rxy.jp/wiki/BrainCrash
+    
+    Add 4 new opcode, or, and, not, and xor.
+    Store ord('Hello, world!') at begining of data cell
+    output byte in data cell and increment pointer until byte==0
+    """
     EXTRA_OPTOKEN_DICT = {
         'or':'|',
         'and':'&',
@@ -34,30 +44,38 @@ class BrainCrash (BrainFuck.BrainFuck):
     } # extra 4 opcode and token
     OPTOKEN_DICT = dict(BrainFuck.BrainFuck.OPTOKEN_DICT.items())
     OPTOKEN_DICT.update(EXTRA_OPTOKEN_DICT)
-    def preproc(self, opcodes):
-        self.cell[0:12] = [72,101,108,108,111,44,32,119,111,114,108,100,33] # store "Hello, world!"
-        if len(opcodes)>0:
-            opcodes = ['nxt']*13+opcodes # move pointer to run BF code
-        return opcodes
-    def postproc(self, opcodes):
-        while self.cell[self.ptr]!=0: # after run opcodes, increment pointer to output the byte at pointer until byte==0
+    def preproc(self):
+        """store "Hello, world!" at the begining of data cell, and move pointer to run BF code
+        """
+        self.cell[0:12] = [ord(s) for s in 'Hello, world!']
+        if len(self.code)>0:
+            self.code = ['nxt']*13 + self.code
+        return True
+    def postproc(self):
+        """after run opcodes, increment pointer to output the byte at pointer until byte==0
+        """
+        while self.cell[self.ptr]!=0:
             sys.stdout.write(chr(self.cell[self.ptr]))
             self.ptr+=1
-        return opcodes
-    def op_or(self, opcodes): ## or 
+        return True
+    def op_or(self):
+        """*ptr++ or *ptr => *ptr++"""
         self.cell[self.ptr+1] = self.cell[self.ptr] | self.cell[self.ptr+1]
         self.ptr+=1
         return True
-    def op_and(self, opcodes): ## and
+    def op_and(self):
+        """*ptr++ and *ptr => *ptr++"""
         self.cell[self.ptr+1] = self.cell[self.ptr] & self.cell[self.ptr+1]
         self.ptr+=1
         return True
-    def op_xor(self, opcodes): ## xor
+    def op_xor(self):
+        """*ptr++ xor *ptr => *ptr++"""
         self.cell[self.ptr+1] = self.cell[self.ptr] ^ self.cell[self.ptr+1]
         self.ptr+=1
         return True
-    def op_not(self, opcodes): ## not 
-        self.cell[self.ptr+1] = ~ self.cell[self.ptr]
+    def op_not(self):
+        """not *ptr => *ptr++"""
+        self.cell[self.ptr] = ~ self.cell[self.ptr]
         return True
 
 def test_bc():
@@ -75,37 +93,47 @@ def test_bc():
     print('')
 
 ## コミュ障プログラミング言語
-## http://www.moonroom.mydns.jp/ls/software/commdis.htm
 class CommDis(BrainCrash):
-    """core extend class for CommDis language"""
+    """Communication disorder language (コミュ障プログラミング言語)
+    http://www.moonroom.mydns.jp/ls/software/commdis.htm
+    
+    Add 6 new opcode to BrainCrash, shl, shr, njm, pjm, zro, and hom.
+    Replace token designed for Communication disorder in Japanese
+    """
     EXTRA_OPTOKEN_DICT = dict(
-        shl = '*',
-        shr = '/',
-        njm = '{',
-        pjm = '}',
-        zro = '!',
-        hom = '?'
+        shl = '*', # bit shift left
+        shr = '/', # bit shift right
+        njm = '{', # jump to next
+        pjm = '}', # jump to previous
+        zro = '!', # set zero
+        hom = '?'  # jump to home
     ) # extra 6 opcodes to BrainCrash
     OPTOKEN_DICT = dict(BrainCrash.OPTOKEN_DICT.items())
     OPTOKEN_DICT.update(EXTRA_OPTOKEN_DICT)
     ARRAY_SIZE = 32767
     TOKENS = ['ｱｱ…','ｱｱ､','ｱ…','ｱ､','ｴｯﾄ…','ｴｯﾄ､','ｻｾﾝ…','ｯｽ…','ｱｯ…','ｱｯ､','ｱﾉ…','ｱﾉ､','ｱｰ…','ｱｰ､','ｴ…','ｴ､','ｴｯ…','ｴｯ?']
-    def op_shl(self, opcodes): ## bit shift left
+    def op_shl(self):
+        """*ptr bit shift left"""
         self.cell[self.ptr]<<1
         return True
-    def op_shr(self, opcodes): ## bit shift right
+    def op_shr(self):
+        """*ptr bit shift right"""
         self.cell[self.ptr]>>1
         return True
-    def op_njm(self, opcodes): ## increase pointer by the byte at pointer
+    def op_njm(self):
+        """increase ptr by *ptr"""
         self.ptr+=self.cell[self.ptr]
         return True
-    def op_pjm(self, opcodes): ## decrease pointer by the byte at pointer
+    def op_pjm(self):
+        """decrease ptr by *ptr"""
         self.ptr-=self.cell[self.ptr]
         return True
-    def op_zro(self, opcodes): ## set zero the byte at pointer 
+    def op_zro(self):
+        """*ptr = 0""" 
         self.cell[self.ptr] = 0
         return True
-    def op_hom(self, opcodes): ## move pointer to 0
+    def op_hom(self):
+        """ptr = 0"""
         self.ptr=0
         return True
 
@@ -115,8 +143,8 @@ def test_cd():
     print('** Run without argument:')
     cd.run('')
     print('')
-    print('** Convert BrainFuck code to CommDiss code:')
-    print(cd.opcodes2tokens(['nxt','prv','hom','pjm','cls']))
+    print('** Convert opcode to CommDiss token:')
+    print(cd.translator(['nxt','prv','hom','pjm','cls'], reverse=True))
     print('')
     fizzbuzzsrc = """ｱ…ｱ…ｱ…ｱ…ｱ…ｱ…ｻｾﾝ…ｱ､ｱｱ…ｱ…ｱ…ｱ…ｱ…ｱｱ…ｱｱ…ｱ…ｱｱ…ｱ…
 ｱｱ…ｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｱｱ､ｯｽ…ｱｱ…ｻｾﾝ…ｱｱ､ｱ…ｱ…ｱ…ｱ…ｱｱ…ｱｱ…ｱ…
@@ -141,13 +169,20 @@ def test_cd():
     print('** Convert FizzBuzz code to BrainFuck code:')
     opcodes = cd.opcodes(fizzbuzzsrc)
     b = BrainFuck.BrainFuck()
-    bf_src = b.tokens2src(b.opcodes2tokens(opcodes))
+    bf_src = b.src(opcodes)
     print(bf_src)
     print('')
 
 ## プログラミング言語 ζ*'ヮ')ζ＜うっうー！
-## http://tackman.info/ut-u/
 class Ut_U(BrainFuck.BrainFuck):
+    """Programing language Ut-U (プログラミング言語 ζ*'ヮ')ζ＜うっうー！)
+    
+    Delete get and add new opcode nop.
+    Change inc and dec opcode to allow to loop (ptr==-1 => ptr==ARRAY_SIZE)
+    Sync data cell and code cell (code cell and data cell are shared in according to spec)
+    
+    http://tackman.info/ut-u/
+    """
     OPTOKEN_DICT = dict(
         nop = 'あうー',
         inc = 'うっうー',
@@ -159,45 +194,58 @@ class Ut_U(BrainFuck.BrainFuck):
         cls = 'かなーって'
     ) # replace opcode and token
     SEP = ' '
-    def copy_op_cell(self, opcodes): ## copy program area to data area
+    def copy_code2cell(self):
+        """copy code area to data area
+        """
         ops = self.optoken.opcodes()
         opmap = dict(zip(ops, [x for x in range(len(ops))]))
-        for i in range(len(opcodes)):
-            self.cell[i] = opmap[opcodes[i]]
-    def copy_cell_op(self, opcodes): ## copy data area to program area
+        for i in range(len(self.code)):
+            self.cell[i] = opmap[self.code[i]]
+        return True
+    def copy_cell2code(self):
+        """copy data area to code area"""
         for ei in range(len(self.cell)-1, -1, -1):
             if self.cell[ei]!=0: break
-        ei = max(ei, len(opcodes))
+        ei = max(ei, len(self.code))
         for i in range(len(self.cell[0:ei])):
-            opcodes[i] = self.optoken.opcodes()[(self.cell[i])]
-        return opcodes
-    def preproc(self, opcodes): ## copy program area to data area before run code
-        self.copy_op_cell(opcodes)
-        return opcodes
-    def stepproc(self, opcodes): ## sync data area and program area at each code step
-        opcodes = self.copy_cell_op(opcodes)
-        self.copy_op_cell(opcodes)
-        return opcodes
-    def op_nop(self, opcodes): ## do nothing
+            self.code[i] = self.optoken.opcodes()[(self.cell[i])]
+        return True
+    def preproc(self):
+        """call copy_code2cell() to initialize data area"""
+        self.copy_code2cell()
+        return True
+    def stepproc(self):
+        """sync data area and code area at each code step"""
+        self.copy_cell2code()
+        self.copy_code2cell()
+        return True
+    def op_nop(self):
+        """do nothing"""
         pass
-    def op_inc(self, opcodes): ## increment the byte at pointer (++*ptr), loop
+        return True
+    def op_inc(self):
+        """increment the byte at pointer (++*ptr), loop"""
         self.cell[self.ptr]+=1
         if self.cell[self.ptr]==8: self.cell[self.ptr]=0
-    def op_dec(self, opcodes): ## decrement the byte at pointer (--*ptr), loop
+        return True
+    def op_dec(self):
+        """decrement the byte at pointer (--*ptr), loop"""
         self.cell[self.ptr]-=1
         if self.cell[self.ptr]==-1: self.cell[self.ptr]=7
-    def op_put(self, opcodes): ## output token related with the byte at the pointer
+        return True
+    def op_put(self):
+        """output token related with the byte at the pointer"""
         sys.stdout.write(self.optoken.tokens()[self.cell[self.ptr]]+self.sep)
+        return True
 
 def test_utu():
     u=Ut_U()
     u.printparams()
-    print('** test (output "うっつー"x7):')
-    utu7src='あうー うっうー かもー イエイ ハイ、ターッチ おとく うっうー かなーって'
-    u.test(utu7src)
+    print('** test (output "うっうー"x7):')
+    u.test('あうー うっうー かもー イエイ ハイ、ターッチ おとく うっうー かなーって')
     print('')
-    print('** Another test (output "うっつー"x7):')
-    utu7src2="""\
+    print('** Another test (output "うっうー"x7):')
+    src="""\
 うっうー！私はりきっちゃうかもー！
 イエイってなっちゃうかなーって。
 
@@ -213,12 +261,16 @@ def test_utu():
 このページは、おとくです！えむ、あい、てぃーライセンスで配布するそうなのでおとく！お金がかからないのでおとく、再配布も出来ておとく、おとくでおとくなのですっごくおとくです！
 
 あうー、がんばって説明しましたけど、あうーって感じでよく分からないです、あうー… あうー、ボロが出ないうちに退散します、あうー…え、あうーってまだ言わなきゃですか？ あうー あうー。"""
-    u.test(utu7src2)
+    u.test(src)
     print('')
 
 ## ジョジョ言語
-## http://d.hatena.ne.jp/toyoshi/touch/20100208/1265587511
 class JoJo (BrainFuck.BrainFuck):
+    """JoJo language (ジョジョ言語)
+    http://d.hatena.ne.jp/toyoshi/touch/20100208/1265587511
+    
+    Replace token as "JoJo's Bizarre Adventure" in Japanese
+    """
     TOKENS = [
         ['スターフィンガ','やれやれだぜ'],
         ['ロードローラ','貧弱'],
@@ -312,8 +364,13 @@ WRYYYYYYYYYYYYYY！
     print('')
 
 ## プログラミング言語フレンズ
-## https://github.com/consomme/kemono_friends_lang
 class Kemono (BrainFuck.BrainFuck):
+    """Programing language Friends (プログラミング言語フレンズ)
+    https://github.com/consomme/kemono_friends_lang
+    
+    Replace token as Serval in Kemono Friends in Japanese.
+    See https://en.wikipedia.org/wiki/Kemono_Friends about Kemono Friends
+    """
     OPTOKEN_DICT = dict(
         nxt = "たのしー！",
         inc = "たーのしー！",
@@ -332,8 +389,13 @@ def test_kemono():
     print('')
 
 ## プログラミング言語「長門有希」
-## http://web.archive.org/web/20080331053354/http://not6.blog.shinobi.jp/Entry/103/
 class Nagato(BrainFuck.BrainFuck):
+    """ Programing language "Yuki Nagato" (プログラミング言語「長門有希」)
+    http://web.archive.org/web/20080331053354/http://not6.blog.shinobi.jp/Entry/103/
+    
+    Replace token as Yuki Nagato in novel/animation "Haruhi Suzumiya" in Japanese.
+    See https://en.wikipedia.org/wiki/Haruhi_Suzumiya about Haruhi Suzumiya.
+    """
     TOKEN_UNIT = '…'
     OPTOKEN_DICT = dict( # BrainFuck opcode and token
         inc = TOKEN_UNIT * 1,
@@ -346,7 +408,6 @@ class Nagato(BrainFuck.BrainFuck):
         cls = '」'
     )
     SEP = '。'
-
 
 def test_nagato():
     n = Nagato()
@@ -378,9 +439,11 @@ def test_nagato():
     n.test(src)
     print('')
 
-## neko mimi f**k
-## http://web.archive.org/web/20080415234349/http://d.hatena.ne.jp/tokuhirom/20041015/p14
-class Nekomimi(BrainFuck.BrainFuck):
+## NekoMimiF*ck
+class NekoMimi(BrainFuck.BrainFuck):
+    """NekoMimiF*ck
+    http://web.archive.org/web/20080415234349/http://d.hatena.ne.jp/tokuhirom/20041015/p14
+    """
     OPTOKEN_DICT = dict( # BrainFuck opcode and token
         nxt = 'ネコミミ！',
         prv = 'ネコミミモード',
@@ -393,7 +456,7 @@ class Nekomimi(BrainFuck.BrainFuck):
     )
 
 def test_nekomimi():
-    n = Nekomimi()
+    n = NekoMimi()
     n.printparams()
     src = """\
 おにいさまおにいさまおにいさまおにいさまキスキス…ネコミミ！おにいさまおにいさま
@@ -420,6 +483,9 @@ def test_nekomimi():
 ## 名状しがたいプログラミング言語のようなもの Nyaruko
 ## https://github.com/masarakki/nyaruko_lang
 class Nyaruko(BrainFuck.BrainFuck):
+    """名状しがたいプログラミング言語のようなもの Nyaruko
+    https://github.com/masarakki/nyaruko_lang
+    """
     OPTOKEN_DICT = dict(
         nxt = '(」・ω・)」うー(／・ω・)／にゃー',
         inc = '(」・ω・)」うー!(／・ω・)／にゃー!',
@@ -439,9 +505,12 @@ def test_nyaruko():
     print('')
 
 ## プログラム言語「てってってー」
-## http://chiraura.hhiro.net/?page=%A5%D7%A5%ED%A5%B0%A5%E9%A5%E0%B8%C0%B8%EC%A1%D6%A4%C6%A4%C3%A4%C6%A4%C3%A4%C6%A1%BC%A1%D7
-## Note: this class does not support sequence in buffer, "\xAB", '\uABCD', and '\dABCDE'.
 class Tettette(BrainFuck.BrainFuck):
+    """プログラム言語「てってってー」
+    http://chiraura.hhiro.net/?page=%A5%D7%A5%ED%A5%B0%A5%E9%A5%E0%B8%C0%B8%EC%A1%D6%A4%C6%A4%C3%A4%C6%A4%C3%A4%C6%A1%BC%A1%D7
+
+    Note: this class does not support sequence in buffer, "\xAB", '\uABCD', and '\dABCDE'.
+    """
     OPTOKEN_DICT = dict( # BrainFuck opcode and token
         buf = 'ー',
         end_buf = 'てー',
@@ -457,27 +526,36 @@ class Tettette(BrainFuck.BrainFuck):
         cls = 'てってってっー'
     )
     ARRAY_SIZE = 65536
-    def op_put(self, opcodes): ## output the byte at the pointer (putchar(*ptr))
+    def initializer(self):
+        """add stack attribute to store string for op_buf()"""
+        super().initializer()
+        self.stack=[] # stack to store strings
+        return True
+    def op_put(self):
+        """output the byte at the pointer (putchar(*ptr))"""
         sys.stdout.write(chr(self.cell[self.ptr]))
-        self.op_nxt(opcodes) # increment pointer
+        self.op_nxt() # increment pointer
         return True
-    def op_get(self, opcodes): ## input a byte and store it in the byte at the pointer (*ptr = getchar())
+    def op_get(self):
+        """input a byte and store it in the byte at the pointer (*ptr = getchar())"""
         self.cell[self.ptr] = ord(raw_input("Enter>")[0])
-        self.op_nxt(opcodes) # increment pointer
+        self.op_nxt() # increment pointer
         return True
-    def op_buf(self,opcodes): # write strings to current cell
-        buf = self.buffer.pop()
+    def op_buf(self):
+        """write strings to current cell"""
+        buf = self.stack.pop()
         for i in range(len(buf)):
             self.cell[self.ptr] = ord(buf[i])
-            self.op_nxt(opcodes)
+            self.op_nxt()
         return True
-    def lexer(self, src, tokenlist): 
+    def lexer(self, src): 
         """lexical analysis of src code and return tokens list
         """
-        tokens = []
-        cur = 0 ## current position in src
-        ctoken = None
-        self.buffer=[] ## buffer to store strings
+        READ_AHEAD_BYTE = 64 # read ahead byte for debugging output
+        tokens = [] # tokens list
+        cur = 0 # current position in src
+        ctoken = None # token candidate 
+        tokenlist = self.optoken.alltokens()
         while cur <= len(src)-1:
             str = src[cur:]
             start = len(str)
@@ -487,7 +565,7 @@ class Tettette(BrainFuck.BrainFuck):
                     ctoken = token
                     start = index
             if self.debug:
-                print('LEXER:', len(tokens), cur, ctoken, str[start:32])
+                print('LEXER:', len(tokens), cur, ctoken, str[start:READ_AHEAD_BYTE])
             ## buffering
             if ctoken in self.optoken['buf']: # if current token is related with buf opcode
                 cur+=str.find(ctoken)+len(ctoken)
@@ -502,7 +580,7 @@ class Tettette(BrainFuck.BrainFuck):
                 if etoken!=None:
                     tokens.append(ctoken)
                     cur+=str.find(etoken)+len(etoken)
-                    self.buffer.append(str[:eindex])
+                    self.stack.insert(0,str[:eindex])
                 ctoken = None
             ## comment
             elif ctoken in self.optoken['com']: # if current token is related with com opcode
@@ -527,7 +605,6 @@ class Tettette(BrainFuck.BrainFuck):
                 ctoken = None
             else:
                 break
-        self.buffer.reverse() # to use as stack
         return tokens
 
 def test_tettette():
@@ -547,8 +624,10 @@ def test_tettette():
     print('')
 
 ## 猫語
-## https://qiita.com/zakuroishikuro/items/2acaaf174844b08495a7
 class Neko(BrainFuck.BrainFuck):
+    """猫語
+    https://qiita.com/zakuroishikuro/items/2acaaf174844b08495a7
+    """
     OPTOKEN_DICT = dict(
         inc = 'にゃにゃ',
         dec = 'にゃー',
@@ -588,8 +667,10 @@ def test_neko():
     print('')
 
 ## プログラミング言語 Misa
-## https://enpedia.rxy.jp/wiki/Misa_(%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%9F%E3%83%B3%E3%82%B0%E8%A8%80%E8%AA%9E)
 class Misa(BrainFuck.BrainFuck):
+    """プログラミング言語 Misa
+    https://enpedia.rxy.jp/wiki/Misa_(%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%9F%E3%83%B3%E3%82%B0%E8%A8%80%E8%AA%9E)
+    """
     OPTOKEN_DICT = dict( # BrainFuck opcode and token
         nxt = ['>', '→', '～', 'ー'],
         prv = ['<', '←', '★', '☆'],
@@ -650,8 +731,10 @@ def test_misa():
     print('')
 
 ## プログラミング言語 KQ
-## https://enpedia.rxy.jp/wiki/Misa_(%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%9F%E3%83%B3%E3%82%B0%E8%A8%80%E8%AA%9E)
 class KQ(BrainFuck.BrainFuck):
+    """プログラミング言語 KQ
+    https://enpedia.rxy.jp/wiki/Misa_(%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%9F%E3%83%B3%E3%82%B0%E8%A8%80%E8%AA%9E)
+    """
     OPTOKEN_DICT = dict( # BrainFuck opcode and token
         nxt = ['ﾀﾞｧｲｪｽ', 'ｼｪﾘ'],
         prv = ['ｲｪｽﾀﾞｧ', 'ｼｴﾘ'],
@@ -662,10 +745,14 @@ class KQ(BrainFuck.BrainFuck):
         opn = ['ｼｴﾘｲｪｽ', '!'],
         cls = ['ｲｪｽｼｴﾘ', ',']
     )
-    def preproc(self, opcodes):
+    def preproc(self):
+        """prepare put_buffer"""
         self.put_buffer=[]
-        return opcodes
-    def op_put(self, opcodes): ## output the byte at the pointer (putchar(*ptr)).
+        return True
+    def op_put(self):
+        """output the byte at the pointer (putchar(*ptr)).
+        if the byte is not valid, store put_buffer until put_buffer is valid to be output
+        """
         import locale
         try:
             self.put_buffer.append(self.cell[self.ptr].to_bytes(1, 'big'))
