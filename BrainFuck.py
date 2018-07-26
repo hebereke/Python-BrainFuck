@@ -255,40 +255,47 @@ class BrainFuck:
         return True
 
     def preproc(self):
-        """pre-processing"""
+        """pre-processing
+        """
         return True
 
     def stepproc(self):
-        """process at each step"""
+        """process at each step
+        """
         return True
 
     def postproc(self):
-        """post-processing"""
+        """post-processing
+        """
         return True
 
     def op_nxt(self):
-        """increment pointer (++ptr)"""
+        """increment pointer (++ptr)
+        """
         self.ptr+=1
         return True
 
     def op_prv(self):
-        """decrement pointer (--ptr)"""
+        """decrement pointer (--ptr)
+        """
         self.ptr-=1
         return True
 
     def op_inc(self):
-        """increment the byte at pointer (++*ptr)"""
+        """increment the byte at pointer (++*ptr)
+        """
         self.cell[self.ptr]+=1
         return True
 
     def op_dec(self):
-        """decrement the byte at pointer (--*ptr)"""
+        """decrement the byte at pointer (--*ptr)
+        """
         self.cell[self.ptr]-=1
         return True
 
     def op_put(self):
         """output the byte at the pointer (putchar(*ptr))
-        if the byte is not valid to output as str, output byte instead of.
+        if the byte is not valid to output as str, output byte as str instead of.
         """
         try:
             sys.stdout.write(chr(self.cell[self.ptr]))
@@ -297,12 +304,14 @@ class BrainFuck:
         return True
 
     def op_get(self):
-        """input a byte and store it in the byte at the pointer (*ptr = getchar())"""
+        """input a byte and store it in the byte at the pointer (*ptr = getchar())
+        """
         self.cell[self.ptr] = ord(input("Enter>")[0])
         return True
 
     def op_opn(self):
-        """jump forward past the matching ] if the byte at the pointer is zero (which (*ptr) {)"""
+        """jump forward past the matching ] if the byte at the pointer is zero (which (*ptr) {)
+        """
         if self.cell[self.ptr] != 0:
             return False
         level=1
@@ -313,7 +322,8 @@ class BrainFuck:
         return True
 
     def op_cls(self):
-        """jump backward to the matching [ unless the byte at the pointer is zero (})"""
+        """jump backward to the matching [ unless the byte at the pointer is zero (})
+        """
         if self.cell[self.ptr] == 0:
             return False
         level=1
