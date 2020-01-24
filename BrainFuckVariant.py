@@ -13,7 +13,7 @@ class Ook (BrainFuck.BrainFuck):
     Replace token designed for orang-utans.
     """
     TOKENS = ['Ook. Ook?','Ook? Ook.','Ook. Ook.','Ook! Ook!','Ook. Ook!','Ook! Ook.','Ook! Ook?','Ook? Ook!']
-    SEP = ' '
+    DEM = ' '
 
 def test_ook():
     o = Ook()
@@ -74,7 +74,7 @@ class BrainCrash (BrainFuck.BrainFuck):
         self.ptr+=1
         return True
     def op_not(self):
-        """not *ptr => *ptr++"""
+        """not *ptr => *ptr"""
         self.cell[self.ptr] = ~ self.cell[self.ptr]
         return True
 
@@ -86,6 +86,7 @@ def test_bc():
     print('')
     print('** BrainFuck code test:')
     bc.test(bc.BF_HELLO_WORLD_SRC)
+    bc.initializer()
     print('** Another test (output "Enpedia"):')
     out_Enpedia_src = '[-]&&&&&&&&&&&&&+++++++[>++++++++++<-]>-.<+++++++[>++++++<-]>-.++.-----------.-.+++++.--------'
     bc.test(out_Enpedia_src)
@@ -178,7 +179,7 @@ class Ut_U(BrainFuck.BrainFuck):
     """Programing language Ut-U (プログラミング言語 ζ*'ヮ')ζ＜うっうー！)
     
     Delete get and add new opcode nop.
-    Change inc and dec opcode to allow to loop (ptr==-1 => ptr==ARRAY_SIZE)
+    Change nxt and prv opcode to allow to loop (ptr==-1 => ptr==ARRAY_SIZE)
     Sync data cell and code cell (code cell and data cell are shared in according to spec)
     
     http://tackman.info/ut-u/
@@ -193,10 +194,10 @@ class Ut_U(BrainFuck.BrainFuck):
         opn = 'かもー',
         cls = 'かなーって'
     ) # replace opcode and token
-    SEP = ' '
+    def __init__(self, **kwargs):
+        super().__init__(cell_size=3, delimiter=' ', wrap_cell=True, **kwargs)
     def copy_code2cell(self):
-        """copy code area to data area
-        """
+        """copy code area to data area"""
         ops = self.optoken.opcodes()
         opmap = dict(zip(ops, [x for x in range(len(ops))]))
         for i in range(len(self.code)):
@@ -223,20 +224,41 @@ class Ut_U(BrainFuck.BrainFuck):
         """do nothing"""
         pass
         return True
-    def op_inc(self):
-        """increment the byte at pointer (++*ptr), loop"""
-        self.cell[self.ptr]+=1
-        if self.cell[self.ptr]==8: self.cell[self.ptr]=0
-        return True
-    def op_dec(self):
-        """decrement the byte at pointer (--*ptr), loop"""
-        self.cell[self.ptr]-=1
-        if self.cell[self.ptr]==-1: self.cell[self.ptr]=7
-        return True
     def op_put(self):
         """output token related with the byte at the pointer"""
-        sys.stdout.write(self.optoken.tokens()[self.cell[self.ptr]]+self.sep)
+        sys.stdout.write(self.optoken.tokens()[self.cell[self.ptr]]+self.delimiter[0])
         return True
+    def op_inc(self):
+        """increment the byte at pointer (++*ptr)
+            behave as full adder
+        """
+        for i in range(len(self.code)-self.ptr):
+            i = i + self.ptr
+            self.cell[i] += 1
+            if self.cell[i] != 0:
+                break
+        if self.cell[self.ptr]>self.cell_max:
+            if self.wrap_cell:
+                self.cell[self.ptr] = self.cell_min
+            else:
+                raise ValueError('Byte at cell pointer is set as '+str(self.cell[self.ptr])+' over maximum value='+str(self.cell_max))
+        return True
+    def op_dec(self):
+        """decrement the byte at pointer (--*ptr)
+            behave as full substractor
+        """
+        for i in range(self.ptr):
+            i = self.ptr - i
+            self.cell[i] -= 1
+            if self.cell[i] != 7:
+                break
+        if self.cell[self.ptr]<self.cell_min:
+            if self.wrap_cell:
+                self.cell[self.ptr] = self.cell_max
+            else:
+                raise ValueError('Byte at cell pointer is set as '+str(self.cell[self.ptr])+' under minimum value='+str(self.cell_min))
+        return True
+
 
 def test_utu():
     u=Ut_U()
@@ -244,6 +266,8 @@ def test_utu():
     print('** test (output "うっうー"x7):')
     u.test('あうー うっうー かもー イエイ ハイ、ターッチ おとく うっうー かなーって')
     print('')
+    print('')
+    u.initializer()
     print('** Another test (output "うっうー"x7):')
     src="""\
 うっうー！私はりきっちゃうかもー！
@@ -260,8 +284,10 @@ def test_utu():
 
 このページは、おとくです！えむ、あい、てぃーライセンスで配布するそうなのでおとく！お金がかからないのでおとく、再配布も出来ておとく、おとくでおとくなのですっごくおとくです！
 
-あうー、がんばって説明しましたけど、あうーって感じでよく分からないです、あうー… あうー、ボロが出ないうちに退散します、あうー…え、あうーってまだ言わなきゃですか？ あうー あうー。"""
+あうー、がんばって説明しましたけど、あうーって感じでよく分からないです、あうー… あうー、ボロが出ないうちに退散します、あうー…え、あうーってまだ言わなきゃですか？ あうー あうー。
+"""
     u.test(src)
+    print('')
     print('')
 
 ## ジョジョ言語
@@ -371,7 +397,7 @@ class Kemono (BrainFuck.BrainFuck):
     Replace token as Serval in Kemono Friends in Japanese.
     See https://en.wikipedia.org/wiki/Kemono_Friends about Kemono Friends
     """
-    OPTOKEN_DICT = dict(
+    OPTOKEN_DICT = dict( # BrainFuck opcode and token
         nxt = "たのしー！",
         inc = "たーのしー！",
         prv = "すごーい！",
@@ -379,7 +405,7 @@ class Kemono (BrainFuck.BrainFuck):
         opn = "うわー！",
         cls = "わーい！",
         put = "なにこれなにこれ！",
-        get = "おもしろーい！") # replace opcode and token
+        get = "おもしろーい！")
 
 def test_kemono():
     k = Kemono()
@@ -407,10 +433,10 @@ class Nagato(BrainFuck.BrainFuck):
         opn = '「',
         cls = '」'
     )
-    SEP = '。'
+    DEM = '。'
 
 def test_nagato():
-    n = Nagato()
+    n = Nagato(wrap_array=True)
     n.printparams()
     src = """\
 …………。…。…。…。…。…。…。…。…。…。
@@ -479,6 +505,7 @@ def test_nekomimi():
 """
     n.test(src)
     print('')
+    print('')
 
 ## 名状しがたいプログラミング言語のようなもの Nyaruko
 ## https://github.com/masarakki/nyaruko_lang
@@ -486,7 +513,7 @@ class Nyaruko(BrainFuck.BrainFuck):
     """名状しがたいプログラミング言語のようなもの Nyaruko
     https://github.com/masarakki/nyaruko_lang
     """
-    OPTOKEN_DICT = dict(
+    OPTOKEN_DICT = dict( # BrainFuck opcode and token
         nxt = '(」・ω・)」うー(／・ω・)／にゃー',
         inc = '(」・ω・)」うー!(／・ω・)／にゃー!',
         prv = '(」・ω・)」うー!!(／・ω・)／にゃー!!',
@@ -548,63 +575,91 @@ class Tettette(BrainFuck.BrainFuck):
             self.cell[self.ptr] = ord(buf[i])
             self.op_nxt()
         return True
-    def lexer(self, src): 
+    def lexer(self, src):
         """lexical analysis of src code and return tokens list
+        
+        Args:
+            src (str): source code
+            
+        Returns:
+            list: token list
         """
-        READ_AHEAD_BYTE = 64 # read ahead byte for debugging output
-        tokens = [] # tokens list
-        cur = 0 # current position in src
-        ctoken = None # token candidate 
-        tokenlist = self.optoken.alltokens()
-        while cur <= len(src)-1:
-            str = src[cur:]
-            start = len(str)
-            for token in tokenlist:
-                index = str.find(token)
-                if index>=0 and (index<start or (index==start and start+len(ctoken)<index+len(token))):
-                    ctoken = token
-                    start = index
-            if self.debug:
-                print('LEXER:', len(tokens), cur, ctoken, str[start:READ_AHEAD_BYTE])
-            ## buffering
-            if ctoken in self.optoken['buf']: # if current token is related with buf opcode
-                cur+=str.find(ctoken)+len(ctoken)
-                etoken = None
-                str = src[cur:]
-                eindex = len(str)
-                for token in self.optoken['end_buf']:
-                    index = str.find(token)
-                    if index>=0 and (index<eindex or (index==eindex and eindex+len(etoken)<index+len(token))):
-                        etoken = token
-                        eindex = index
-                if etoken!=None:
-                    tokens.append(ctoken)
-                    cur+=str.find(etoken)+len(etoken)
-                    self.stack.insert(0,str[:eindex])
-                ctoken = None
-            ## comment
-            elif ctoken in self.optoken['com']: # if current token is related with com opcode
-                cur+=str.find(ctoken)+len(ctoken)
-                etoken = None
-                str = src[cur:]
-                eindex = len(str)
-                for token in self.optoken['end_com']:
-                    index = str.find(token)
-                    if index>=0 and (index<eindex or (index==eindex and eindex+len(etoken)<index+len(token))):
-                        etoken = token
-                        eindex = index
-                if etoken!=None:
-                    cur+=str.find(etoken)+len(etoken)
-                else:
-                    raise SyntaxError('comment token pair are not matched')
-                ctoken = None
-            ## end extend codes
-            elif ctoken!=None:
-                tokens.append(ctoken)
-                cur+=str.find(ctoken)+len(ctoken)
-                ctoken = None
+        ## delimit src by multiple delimiter
+        def _delimit(src, dem):
+            if type(src)==str: src = [src]
+            if len(dem)==1 and dem[0]=='': return src
+            if len(dem)==0: return src
             else:
-                break
+                d=dem.pop()
+                o=[]
+                for s in src:
+                    o+=s.split(d)
+                return _delimit(o, dem)
+        ## core of lexer
+        def _lexer(src, tokenlist):
+            READ_AHEAD_BYTE = 64 # read ahead byte for debugging output
+            tokens = [] # output tokens list
+            cur = 0 # current position in src
+            ctoken = None # token candidate
+            while cur <= len(src)-1:
+                cstr = src[cur:]
+                start = len(cstr)
+                for token in tokenlist:
+                    index = cstr.find(token)
+                    if index>=0 and (index<start or (index==start and start+len(ctoken)<index+len(token))):
+                        ctoken = token
+                        start = index
+                if self.debug:
+                    print('LEXER:', len(tokens), cur, ctoken, cstr[start:READ_AHEAD_BYTE])
+                ## buffering
+                if ctoken in self.optoken['buf']: # if current token is related with buf opcode
+                    cur+=cstr.find(ctoken)+len(ctoken)
+                    etoken = None
+                    cstr = src[cur:]
+                    eindex = len(cstr)
+                    for token in self.optoken['end_buf']:
+                        index = cstr.find(token)
+                        if index>=0 and (index<eindex or (index==eindex and eindex+len(etoken)<index+len(token))):
+                            etoken = token
+                            eindex = index
+                    if etoken!=None:
+                        cur+=cstr.find(etoken)+len(etoken)
+                        tokens.append(ctoken)
+                        self.stack.insert(0,cstr[:eindex])
+                    ctoken = None
+                    continue
+                ## comment
+                elif ctoken in self.optoken['com']: # if current token is related with com opcode
+                    cur+=cstr.find(ctoken)+len(ctoken)
+                    etoken = None
+                    cstr = src[cur:]
+                    eindex = len(cstr)
+                    for token in self.optoken['end_com']:
+                        index = cstr.find(token)
+                        if index>=0 and (index<eindex or (index==eindex and eindex+len(etoken)<index+len(token))):
+                            etoken = token
+                            eindex = index
+                    if etoken!=None:
+                        cur+=cstr.find(etoken)+len(etoken)
+                    else:
+                        raise SyntaxError('comment token pair are not matched')
+                    ctoken = None
+                    continue
+                ## add token list
+                if ctoken!=None:
+                    tokens.append(ctoken)
+                    cur += cstr.find(ctoken)+len(ctoken)
+                    ctoken = None
+                else:
+                    break
+            return tokens
+        ## main of lexer function
+        tokens = []
+        dsrc = [src]
+        if self.delimit_input:
+            dsrc = _delimit(src, self.delimiter)
+        for src in dsrc:
+            tokens += _lexer(src, self.optoken.alltokens())
         return tokens
 
 def test_tettette():
@@ -622,13 +677,14 @@ def test_tettette():
 ーーてーてっててーてってっー　{「ー」をメモリに書き込み、ポインタを戻してから標準出力へ出力する}"""
     t.test(out_tettette_src)
     print('')
+    print('')
 
 ## 猫語
 class Neko(BrainFuck.BrainFuck):
     """猫語
     https://qiita.com/zakuroishikuro/items/2acaaf174844b08495a7
     """
-    OPTOKEN_DICT = dict(
+    OPTOKEN_DICT = dict( # BrainFuck opcode and token
         inc = 'にゃにゃ',
         dec = 'にゃー',
         nxt = 'にゃっ',
@@ -683,7 +739,7 @@ class Misa(BrainFuck.BrainFuck):
     )
 
 def test_misa():
-    m = Misa()
+    m = Misa(wrap_cell=True, wrap_array=True)
     m.printparams()
     src = """\
 ごっ、ごぉおっ、ご～きげんよおぉおおぉおほっ。ほおぉおぉおっ。
@@ -763,10 +819,72 @@ class KQ(BrainFuck.BrainFuck):
         return True
 
 def test_kq():
-    k = KQ()
+    k = KQ(cell_size=32)
     k.printparams()
     src = """ﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｼｪﾘｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｴﾘﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｼｴﾘｲｪｽﾀﾞｧｲｪｽﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧﾀﾞｧｲｪｽﾀﾞｧｼｪﾘｼｪﾘｲｪｽｼｴﾘﾀﾞｧｲｪｽｼｴﾘﾀﾞｧｲｪｽﾀﾞｧ"""
     k.test(src)
+    print('')
+
+## プログラミング言語 siro
+class siro(BrainFuck.BrainFuck):
+    """プログラミング言語 siro
+    https://qiita.com/benisho_ga/items/50e674fded183a9e12f1
+    """
+    OPTOKEN_DICT = dict( # BrainFuck opcode and token
+        nxt = "いーねっ！",
+        inc = "おほほい",
+        prv = "ｷｭｰｲ",
+        dec = "ぱいーん",
+        opn = "白組さん",
+        cls = "救済",
+        put = "なんて日だ！",
+        get = "ズンドコズンドコ♪")
+
+def test_siro():
+    s = siro()
+    s.printparams()
+    src = """いーねっ！おほほいおほほいおほほいおほほいおほほいおほほいおほほいおほほいおほほい白組さんｷｭｰｲおほほいおほほいおほほいおほほいおほほいおほほいおほほいおほほいいーねっ！ぱいーん救済ｷｭｰｲなんて日だ！いーねっ！おほほいおほほいおほほいおほほいおほほいおほほいおほほい白組さんｷｭｰｲおほほいおほほいおほほいおほほいいーねっ！ぱいーん救済ｷｭｰｲおほほいなんて日だ！おほほいおほほいおほほいおほほいおほほいおほほいおほほいなんて日だ！なんて日だ！おほほいおほほいおほほいなんて日だ！白組さんぱいーん救済いーねっ！おほほいおほほいおほほいおほほいおほほいおほほいおほほいおほほい白組さんｷｭｰｲおほほいおほほいおほほいおほほいいーねっ！ぱいーん救済ｷｭｰｲなんて日だ！いーねっ！おほほいおほほいおほほいおほほいおほほいおほほいおほほいおほほいおほほいおほほいおほほい白組さんｷｭｰｲおほほいおほほいおほほいおほほいおほほいいーねっ！ぱいーん救済ｷｭｰｲなんて日だ！いーねっ！おほほいおほほいおほほいおほほいおほほいおほほいおほほいおほほい白組さんｷｭｰｲおほほいおほほいおほほいいーねっ！ぱいーん救済ｷｭｰｲなんて日だ！おほほいおほほいおほほいなんて日だ！ぱいーんぱいーんぱいーんぱいーんぱいーんぱいーんなんて日だ！ぱいーんぱいーんぱいーんぱいーんぱいーんぱいーんぱいーんぱいーんなんて日だ！白組さんぱいーん救済いーねっ！おほほいおほほいおほほいおほほいおほほいおほほいおほほいおほほい白組さんｷｭｰｲおほほいおほほいおほほいおほほいいーねっ！ぱいーん救済ｷｭｰｲおほほいなんて日だ！白組さんぱいーん救済おほほいおほほいおほほいおほほいおほほいおほほいおほほいおほほいおほほいおほほいなんて日だ！"""
+    s.test(src)
+    print('')
+
+## プログラミング言語 Dragon Ball
+class DB(BrainFuck.BrainFuck):
+    """プログラミング言語 Dragon Ball
+    https://spc-jpn.co.jp/blog/6657/
+    """
+    OPTOKEN_DICT = dict( # BrainFuck opcode and token
+        nxt = 'クリリンのことかーーーっ！！！',
+        inc = 'かめはめ波！！',
+        prv = 'ナッパよけろーーーっ！！！',
+        dec = '魔貫光殺砲！！',
+        opn = 'ギャルのパンティおくれーーーっ！！！',
+        cls = '戦闘力…たったの5か…ゴミめ…',
+        put = 'がんばれカカロット…お前がナンバー1だ！！',
+        get = 'へっ！きたねぇ花火だ')
+
+def test_DB():
+    d = DB()
+    d.printparams()
+    src = """かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！ かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！
+ギャルのパンティおくれーーーっ！！！
+  クリリンのことかーーーっ！！！ かめはめ波！！かめはめ波！！かめはめ波！！
+  クリリンのことかーーーっ！！！ かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！ かめはめ波！！かめはめ波！！
+  クリリンのことかーーーっ！！！ かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！ かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！
+  クリリンのことかーーーっ！！！ かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！ かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！ かめはめ波！！
+  ナッパよけろーーーっ！！！ナッパよけろーーーっ！！！ナッパよけろーーーっ！！！ナッパよけろーーーっ！！！ 魔貫光殺砲！！
+戦闘力…たったの5か…ゴミめ…
+クリリンのことかーーーっ！！！クリリンのことかーーーっ！！！ 魔貫光殺砲！！魔貫光殺砲！！ がんばれカカロット…お前がナンバー1だ！！
+クリリンのことかーーーっ！！！クリリンのことかーーーっ！！！ かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！ がんばれカカロット…お前がナンバー1だ！！
+ナッパよけろーーーっ！！！ 魔貫光殺砲！！魔貫光殺砲！！魔貫光殺砲！！ がんばれカカロット…お前がナンバー1だ！！
+かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！かめはめ波！！ かめはめ波！！ がんばれカカロット…お前がナンバー1だ！！
+クリリンのことかーーーっ！！！ 魔貫光殺砲！！魔貫光殺砲！！魔貫光殺砲！！ がんばれカカロット…お前がナンバー1だ！！
+魔貫光殺砲！！ がんばれカカロット…お前がナンバー1だ！！
+ナッパよけろーーーっ！！！ナッパよけろーーーっ！！！ナッパよけろーーーっ！！！ かめはめ波！！かめはめ波！！ がんばれカカロット…お前がナンバー1だ！！
+クリリンのことかーーーっ！！！ 魔貫光殺砲！！魔貫光殺砲！！ がんばれカカロット…お前がナンバー1だ！！
+クリリンのことかーーーっ！！！ 魔貫光殺砲！！魔貫光殺砲！！魔貫光殺砲！！魔貫光殺砲！！魔貫光殺砲！！ 魔貫光殺砲！！がんばれカカロット…お前がナンバー1だ！！
+クリリンのことかーーーっ！！！ 魔貫光殺砲！！魔貫光殺砲！！ がんばれカカロット…お前がナンバー1だ！！がんばれカカロット…お前がナンバー1だ！！"""
+    
+    d.test(src)
     print('')
 
 ## main for test
@@ -784,3 +902,5 @@ if __name__ == "__main__":
     test_neko()
     test_misa()
     test_kq()
+    test_siro()
+    test_DB()
